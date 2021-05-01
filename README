@@ -1,0 +1,60 @@
+
+	README FOR SFILE
+
+    WARNING /!\: Is a very old program (code not clear), just maintained for
+                 compile linux/macos, patch bugs and add small options.
+
+
+	Search File : search file and search string in file.
+
+  -Installation:
+	$ tar zxvf sfile-x.x.x.tar.gz
+	$ make
+	$ ./sfile --help
+	delete *.o:
+	-----------
+	$ make clean
+	Need root:
+	----------
+	# make install
+	$ sfile --help
+
+  -Uninstall
+	$ make uninstall
+
+  -Arguments:
+	  -h, --help               show usage and exit program
+	  -v, --version            show program version and exit
+	  -a, --all                do not ignore entries starting with '.'
+	  -E, --env-path           search in directory to the $PATH varaible
+	  -r, --recursive          list subdirectories recursively
+	  -D, --ign-dir            do not list entries is dir
+	  -F, --ign-file           do not list entries is regular file
+	  -B, --ign-backup         do not list implied entries ending by '~'
+	  -A, --ign-archive        do not list implied entries ending by
+	                             .gz or .bz2 or .zip or .rar or .7z
+	  -G, --ign-ext [EXT]      ignore all file ending by EXT
+	  -P, --full-path          show full path to the entries
+	  -c, --color              display file name with color
+	  -I, --put-inode          print inode for file finds
+	  -l, --line               print line to find word in file
+	                           (just with -i argument)
+	  -L, --info               print file information (perm, size, user)
+	  -P, --print              print first line to find word
+	  -V, --print-all          print all line to found word
+	  -x, --exit [N]           exit program after N result finds
+	  -o, --no-scan [STR]      do not list entries with STR in name
+	  -e, --extension [STR]    search file by extension
+	  -i, --in-file [STR]      search string to file
+	  -N, --name [STR]         search file to name exactly with STR
+	  -n, --in-name [STR]      if STR in the file name
+	  -u, --uid [UID]          search file by UID
+	  -Q, --inode [INODE]      search file by inode numbers
+	      --ack [STRING]       like default ack program.
+	                            active options: -VlPrci
+	                           -V: Print all line where STRING (option -i)
+	                           -l: Print line number
+	                           -P: print file full path
+	                           -r: recusive
+	                           -i: search word in file
+	                           -c: color

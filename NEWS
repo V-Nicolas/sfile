@@ -1,0 +1,53 @@
+
+NEWS for SFILE:
+
+
+## 2020
+
+1.3.0   * Add long option --ack: like search with default ack program,
+          Is just combination to existing options: -lVPrci string_search
+
+1.2.1   * Compil on MacOS.
+        * change coding style
+
+
+## 2011
+
+1.2     * output and bug fixed
+	* source cleaned (more speed)
+	* add options -Q -u --ign-ext
+	* clean output
+
+0.1.11  * source cleaned
+
+
+0.1.10  * add option --print for print line to find string in file
+	* add option --print-all for print all line to find string in file
+
+
+0.1.9   * add option --exit, for exit program after N result found
+	* add flags for the compile : -Wall
+
+
+0.1.8   * delete test.sh
+	* add option ---put-inode for print inode file
+	* add option --color for colorize output
+	* add option --ign-archive for ignore archive (.tar,zip etc)
+	* sfile is portable for *BSD (tested on FreeBSD 8)
+
+
+### 2010
+
+0.1.2	* add option --env-path, for search in directory that in variable of environement PATH
+	* add option --no-scan for ignore object if word in name, and if object is directory,
+	  and recursive mode ON, y not scanned after
+	* add option --extension (-e) for search file with special extension
+	* add --infos for display file informations (perm, size, user)
+
+	
+0.1.1	* add option ignore file or directory (--file-ign or --dir-ign)
+	* add option "--full-path", if you not specified a path, research current path,
+	  and  if option full-path ok, print full path, else current path replaced by "./"
+	* bug-fixed, sometimes one directory not listed
+
+0.1.0   * First version
