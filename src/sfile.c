@@ -35,9 +35,31 @@ main(int argc, char **argv)
     struct opt_s x;
 
     set_program_name(argv[0]);
+    sfile_init(&x);
     decode_program_param(argc, argv, &x);
     scan_arg_object(argc, argv, &x);
+    sfile_free(&x);
     return EXIT_SUCCESS;
+}
+
+void
+sfile_init(struct opt_s *x)
+{
+    memset(x, 0, sizeof(struct opt_s));
+    x->byino = -1;
+    x->byuid = -1;
+    x->n_exit = -1;
+}
+
+void
+sfile_free(struct opt_s *x)
+{
+    xfree(x->ign);
+    xfree(x->ext);
+    xfree(x->ign_ext);
+    xfree(x->wif);
+    xfree(x->win);
+    xfree(x->wnf);
 }
 
 void
@@ -55,9 +77,8 @@ set_program_name(const char *arg0)
 void
 decode_program_param(int argc, char **argv, struct opt_s *x)
 {
-    char current_arg;
+    int current_arg;
 
-    init_sfile_options(x);
     if (argc == 1) {
         x->opts = O_LS_MODE;
         return;
@@ -74,8 +95,8 @@ decode_program_param(int argc, char **argv, struct opt_s *x)
         case 'a':
             x->opts |= O_ALL;
             break;
-        case 'E':
-            x->opts |= O_ENV_PATH;
+	case 'w':
+            x->opts |= O_ENV_PATH | O_FULL_PATH;
             break;
         case 'r':
             x->opts |= O_RECURSIVE;
@@ -126,42 +147,36 @@ decode_program_param(int argc, char **argv, struct opt_s *x)
                                              "search by uid");
             break;
         case 'o':
-            x->ign = optarg;
+            x->ign = xstrdup(optarg);
             break;
         case 'e':
-            x->ext = optarg;
+            x->ext = xstrdup(optarg);
             break;
         case 'i':
-            x->wif = optarg;
+            x->wif = xstrdup(optarg);
             break;
         case 'N':
-            x->wnf = optarg;
+            x->wnf = xstrdup(optarg);
             break;
         case 'n':
-            x->win = optarg;
+            x->win = xstrdup(optarg);
             break;
         case 'G':
-            x->ign_ext = optarg;
+            x->ign_ext = xstrdup(optarg);
             break;
         case OPT_ACK_LIKE:
             x->opts |= O_ALL_PRINT | O_PRINT | O_FULL_PATH | O_RECURSIVE |
                        O_NUM_LINE | O_COLOR;
-            x->wif = argv[optind - 1];
+            x->wif = xstrdup(optarg);
             break;
+	default:
+	    /* for waring */
+	    break;
         }
     } while (current_arg != -1);
     if (!x->wif && !x->win && !x->wnf && !x->ext &&
         x->byuid == -1 && x->byino == -1)
         x->opts |= O_LS_MODE;
-}
-
-void
-init_sfile_options(struct opt_s *x)
-{
-    memset(x, 0, sizeof(struct opt_s));
-    x->byino = -1;
-    x->byuid = -1;
-    x->n_exit = -1;
 }
 
 void
@@ -302,7 +317,6 @@ list_dir_object(struct opt_s *x, const char *path)
     dlist.tail = NULL;
     push_dir_stack(&dlist, path);
     do {
-        x->retline = 0;
         dir = opendir(dlist.chunk->un.str);
         if (!dir) {
             fprintf(stderr, "%s:opendir: path: <%s>: %s\n", program_name,
@@ -337,8 +351,7 @@ list_dir_object(struct opt_s *x, const char *path)
             xfree(dlist.chunk->un.str);
             xfree(dlist.chunk);
             dlist.chunk = p_next;
-            if (dlist.chunk && x->retline)
-                putchar('\n');
+	    x->n_dir_result = 0;
         }
     } while (x->n_exit && dlist.chunk);
 }
@@ -373,7 +386,6 @@ check_object(struct opt_s *x, struct finfo_s *fi)
          (x->wnf && !strcmp(x->wnf, fi->fi_name)) ||
          /* search word in file */
          (x->wif && !word_in_file(x, fi->fi_path))) {
-        x->retline = 1;
         sfile_print_object(x, fi);
         x->n_exit--;
     }
@@ -393,7 +405,7 @@ cmp_file_extension(const char *name, const char *ext)
 int
 word_in_file(struct opt_s *x, const char *path_file)
 {
-    char buf[2048];
+    char buf[LINE_BUFSIZE];
     FILE *file = NULL;
     long n_lines;
 
@@ -406,14 +418,15 @@ word_in_file(struct opt_s *x, const char *path_file)
     /* first line */
     n_lines = 1;
     do {
-        if (fgets(buf, 4096, file)) {
+        if (fgets(buf, LINE_BUFSIZE, file)) {
             if (strstr(buf, x->wif)) {
                 if ((x->opts & O_PRINT) ||
                     (x->opts & O_ALL_PRINT) ||
-                    (x->opts & O_NUM_LINE))
+                    (x->opts & O_NUM_LINE)) {
                     push_line_stack(&x->line, (x->opts &
                                                (O_PRINT | O_ALL_PRINT)),
                                     buf, n_lines);
+		}
                 if (!(x->opts & O_ALL_PRINT)) {
                     fclose(file);
                     return 0;
@@ -464,8 +477,14 @@ push_line_stack(struct stack_s *stack, setopt_t print, char *line, long n)
 void
 sfile_print_object(struct opt_s *x, struct finfo_s *fi)
 {
+    if ((!(x->opts & O_FULL_PATH) && !(x->opts & O_ALL_PRINT))
+	&& x->p_current_path && !x->n_dir_result) {
+	printf("%s\n", x->p_current_path);
+	x->n_dir_result++;
+    }
+    
     if (NEED_CUSTOM_OUTPUT(x) && x->line.chunk)
-        printf("\x1b[1;36;44m");
+        printf("\x1b[1;36;44m\x1B[37m");
     else if ((x->opts & O_COLOR)) {
         //todo print la color ici
     }
@@ -479,7 +498,7 @@ sfile_print_object(struct opt_s *x, struct finfo_s *fi)
 #ifdef MACOS
         printf("\r\t\t\t %llu\r\t\t\t\t\t", fi->fi_stat.st_size);
 #else
-        printf("%lu ", fi->fi_stat.st_size);
+        printf("%ld ", fi->fi_stat.st_size);
 #endif /* MACOS */
     }
 
@@ -510,10 +529,10 @@ print_perm_object(mode_t mode)
     perm[0] = (S_IFDIR & mode) ? 'd' : '-';
     perm[1] = (S_IRUSR & mode) ? 'r' : '-';
     perm[2] = (S_IWUSR & mode) ? 'w' : '-';
-    perm[3] = object_is_suid(mode, S_ISUID, S_IXUSR);
+    perm[3] = (char) object_is_suid(mode, S_ISUID, S_IXUSR);
     perm[4] = (S_IRGRP & mode) ? 'r' : '-';
     perm[5] = (S_IWGRP & mode) ? 'w' : '-';
-    perm[6] = object_is_suid(mode, S_ISGID, S_IXGRP);
+    perm[6] = (char) object_is_suid(mode, S_ISGID, S_IXGRP);
     perm[7] = (S_IROTH & mode) ? 'r' : '-';
     perm[8] = (S_IWOTH & mode) ? 'w' : '-';
     perm[9] = (S_IXOTH & mode) ? 'x' : '-';
@@ -521,7 +540,7 @@ print_perm_object(mode_t mode)
 }
 
 int
-object_is_suid(mode_t mode, int flag, int flag_x)
+object_is_suid(mode_t mode, unsigned int flag, unsigned int flag_x)
 {
     if ((flag & mode))
         return 's';
@@ -573,9 +592,9 @@ print_object_name(struct finfo_s *fi, struct opt_s *x)
     }
     else {
         if ((x->opts & O_FULL_PATH))
-            strncpy(buf, fi->fi_path, _PATH_LEN);
+            strncpy(buf, fi->fi_path, PATH_LEN);
         else
-            strncpy(buf, fi->fi_name, _PATH_LEN);
+            strncpy(buf, fi->fi_name, PATH_LEN);
     }
     printf("%s ", buf);
 }
@@ -584,19 +603,22 @@ void
 print_line_object(struct stack_chunk_s *chunk, struct opt_s *x)
 {
     struct stack_chunk_s *p_next = NULL;
-
+    
     if (LINE_S(chunk)) {
         putchar('\n');
         do {
             p_next = chunk->next;
-            if ((x->opts & O_NUM_LINE)) {
-                if (!NEED_CUSTOM_OUTPUT(x))
-                    printf(" [%ld] + %s\n", LINE_N(chunk), LINE_S(chunk));
-                else {
-                    printf(" [\x1b[1;36;44m%ld%s] + %s\n",
-                           LINE_N(chunk), COLOR_NULL, LINE_S(chunk));
-                }
-            }
+	    if (!(x->opts & O_NUM_LINE)) {
+		printf(" + %s\n", LINE_S(chunk));
+	    }
+	    else {
+		if (!NEED_CUSTOM_OUTPUT(x))
+		    printf(" [%ld] + %s\n", LINE_N(chunk), LINE_S(chunk));
+		else {
+		    printf(" [\x1b[1;36;44m\x1B[37m%ld%s] + %s\n",
+			   LINE_N(chunk), COLOR_NULL, LINE_S(chunk));
+		}
+	    }
             xfree(LINE_S(chunk));
             xfree(chunk->un.data);
             xfree(chunk);
@@ -655,7 +677,7 @@ xstrtol_fatal(const char *str, const char *err_msg)
     int ret;
     char *err = NULL;
 
-    ret = strtol(str, &err, 10);
+    ret = (int) strtol(str, &err, 10);
     if (*err != '\0') {
         fprintf(stderr, "%s:strtol: %s\n",
                 program_name, err_msg);
@@ -671,7 +693,7 @@ usage(void)
            "  -h, --help               show usage and exit program\n"
            "  -v, --version            show program version and exit\n"
            "  -a, --all                do not ignore entries starting with '.'\n"
-           "  -E, --env-path           search in directory to the $PATH varaible\n"
+           "  -w, --which              search in directory to the $PATH varaible\n"
            "  -r, --recursive          list subdirectories recursively\n"
            "  -D, --ign-dir            do not list entries is dir\n"
            "  -F, --ign-file           do not list entries is regular file\n"
@@ -709,6 +731,6 @@ usage(void)
 void
 version(void)
 {
-    puts("sfile version 1.3.0");
+    puts("sfile version 1.3.1");
     exit(EXIT_SUCCESS);
 }

@@ -24,11 +24,15 @@
 
 #include  <getopt.h>
 #include  <stdint.h>
-
+#include  <sys/types.h>
 typedef uint32_t setopt_t;
 
 #define    PATH_LEN      1024
 #define    _PATH_LEN     1023
+
+#ifndef LINE_BUFSIZE
+# define LINE_BUFSIZE 4096
+#endif /* !LINE_BUFSIZE */
 
 /* color list */
 #define COLOR_NULL          "\033[00m"
@@ -42,7 +46,7 @@ enum long_program_arguments {
     OPT_ACK_LIKE = 1, /* combination of options: -VlPrci */
 };
 
-#define STR_OPT_INDEX    "hvaErDFBAPcIlLpVx:Q:u:o:e:i:N:n:G:"
+#define STR_OPT_INDEX    "hvawrDFBAPcIlLpVx:Q:u:o:e:i:N:n:G:"
 
 /* default mode, just list file in current directory */
 #define  O_LS_MODE      0x00000001
@@ -139,7 +143,7 @@ struct opt_s {
     int n_exit;
     int byuid;
     int byino;
-    int retline;
+    int n_dir_result;
     setopt_t opts;
     char *ext;
     char *wif;   /* Word In File */
@@ -163,7 +167,7 @@ struct option const opt_index[] =
           {"help",        no_argument,       NULL, 'h'},
           {"version",     no_argument,       NULL, 'v'},
           {"all",         no_argument,       NULL, 'a'},
-          {"env-path",    no_argument,       NULL, 'E'},
+          {"which",       no_argument,       NULL, 'w'},
           {"recursive",   no_argument,       NULL, 'r'},
           {"ign-dir",     no_argument,       NULL, 'D'},
           {"ign-file",    no_argument,       NULL, 'F'},
@@ -189,9 +193,10 @@ struct option const opt_index[] =
           {NULL,          0,                 NULL, 0}
      };
 
+void sfile_init(struct opt_s *x);
+void sfile_free(struct opt_s *x);
 void set_program_name(const char *arg0);
 void decode_program_param(int argc, char **argv, struct opt_s *x);
-void init_sfile_options(struct opt_s *w);
 void scan_arg_object(int argc, char **argv, struct opt_s *x);
 void scan_path_environ(struct opt_s *x);
 void set_object_path(char *name, setopt_t full);
@@ -207,7 +212,7 @@ void push_line_stack(struct stack_s *stack, setopt_t print,
                      char *line, long n);
 void sfile_print_object(struct opt_s *x, struct finfo_s *fi);
 void print_perm_object(mode_t mode);
-int object_is_suid(mode_t mode, int flag, int flag_x);
+int object_is_suid(mode_t mode, unsigned int flag, unsigned int flag_x);
 void print_user_object(uid_t uid);
 void print_object_name(struct finfo_s *fi, struct opt_s *x);
 void print_line_object(struct stack_chunk_s *chunk,  struct opt_s *x);

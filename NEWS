@@ -1,6 +1,13 @@
 
 NEWS for SFILE:
 
+## 2021
+
+1.3.1   * fix and clean commands output.
+	* Add compile flags.
+	* Change line number output and color
+	* Rename option -E, --env-path in -w, --which
+	* Option -w, --which now print full path for result.
 
 ## 2020
 
